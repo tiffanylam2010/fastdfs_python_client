@@ -1,0 +1,40 @@
+int log_init();
+
+int fdfs_client_init_ex(TrackerServerGroup *pTrackerGroup, \
+		const char *conf_filename);
+
+ConnectionInfo *tracker_get_connection_ex(TrackerServerGroup *pTrackerGroup);
+
+void fdfs_client_destroy_ex(TrackerServerGroup *pTrackerGroup);
+
+ConnectionInfo *tracker_connect_server_ex(ConnectionInfo *pTrackerServer, \
+		const int connect_timeout, int *err_no);
+
+int storage_upload_by_filename1_ex(ConnectionInfo *pTrackerServer, \
+		ConnectionInfo *pStorageServer, const int store_path_index, \
+		const char cmd, const char *local_filename, \
+		const char *file_ext_name, const FDFSMetaData *meta_list, \
+		const int meta_count, const char *group_name, char *file_id);
+
+int storage_do_upload_file1(ConnectionInfo *pTrackerServer, \
+		ConnectionInfo *pStorageServer, const int store_path_index, \
+		const char cmd, const int upload_type, \
+		const char *file_buff, void *arg, const int64_t file_size, \
+		const char *file_ext_name, const FDFSMetaData *meta_list, \
+		const int meta_count, const char *group_name, char *file_id);
+
+int storage_upload_slave_by_filename1(ConnectionInfo *pTrackerServer, \
+		ConnectionInfo *pStorageServer, const char *local_filename,\
+		const char *master_file_id, const char *prefix_name, \
+		const char *file_ext_name, \
+		const FDFSMetaData *meta_list, const int meta_count, \
+		char *file_id);
+
+int storage_upload_slave_by_filebuff1(ConnectionInfo *pTrackerServer, \               
+		ConnectionInfo *pStorageServer, const char *file_buff, \                      
+		const int64_t file_size, const char *master_file_id, \                        
+		const char *prefix_name, const char *file_ext_name, \                         
+		const FDFSMetaData *meta_list, const int meta_count, \                        
+		char *file_id);
+
+
