@@ -53,29 +53,6 @@ class FastDFSClient(object):
 		errno = LIBFDFSCLIENT.fdfs_client_init_ex(self.p_group, client_conf_file) 
 		if errno != 0:
 			raise Exception("init failed errno:%d"%errno)
-	
-	def _get_tracker(self):
-		p_tracker = LIBFDFSCLIENT.tracker_get_connection_ex(self.p_group)
-		if bool(p_tracker):
-			# 如果tracker_get_connection_ex失败返回的是空指针
-			# 通过bool可以判断p_tracker是否空指针
-			return p_tracker
-		else:
-			return None
-	
-	def _pack_meta(self, meta_dict):
-		p_meta = None
-		meta_count = 0
-
-		if meta_dict:
-			meta_count = len(meta_dict)
-			p_meta = (FDFSMetaData*meta_count)()
-			for i,key in enumerate(meta_dict.keys()):
-				value = meta_dict[key]
-				p_meta[i].name = key
-				p_meta[i].value = value
-
-		return p_meta, meta_count
 		
 	def destroy(self):
 		LIBFDFSCLIENT.fdfs_client_destroy_ex(self.p_group)
@@ -87,11 +64,24 @@ class FastDFSClient(object):
 		return file_ext_name
 		
 	def _call_upload(self, upload_type, argv, meta_dict=None):
-		p_tracker = self._get_tracker()
-		if not p_tracker:
+		p_tracker = LIBFDFSCLIENT.tracker_get_connection_ex(self.p_group)		
+		if not bool(p_tracker):
+			# 如果tracker_get_connection_ex失败返回的是空指针
+			# 通过bool可以判断p_tracker是否空指针
+			# 如果返回空指针,则返回错误
 			return False, "connect to tracker failed"
-			
-		p_meta, meta_count = self._pack_meta(meta_dict)
+
+		p_meta = None
+		meta_count = 0
+		if meta_dict:
+			# 这一段不能封装成函数, 否则p_meta可能被释放,导致crash
+			meta_count = len(meta_dict)
+			p_meta = (FDFSMetaData*meta_count)()
+			for i,key in enumerate(meta_dict.keys()):
+				value = meta_dict[key]
+				p_meta[i].name = key
+				p_meta[i].value = value
+				
 		file_id = ctypes.create_string_buffer(256)
 		if upload_type == 'master_buffer':
 			content = argv['content']

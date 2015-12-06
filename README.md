@@ -8,12 +8,14 @@ FastDFS Python Client (Ctypes Version)
 	
 ##功能:
 * 由于FastDFS一般是上传使用API,下载用http, 所以目前只提供了以下接口:
+
 		upload_by_buffer
 		upload_by_file
 		upload_slave_by_buffer
 		upload_slave_by_file
 
 * 如果需要,可以继续添加接口, 方法如下:
+
 		第一步: 在tools/c_function_define.txt中添加需要的接口中c中的定义
 		第二步: 运行tools/gendef.py, 这步是根据定义更新 fastdfs_c_define.py
 		第三步: 在fastdfs_client.py的FastDFSClient类中添加相关的函数调用
