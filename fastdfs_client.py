@@ -1,10 +1,39 @@
-# coding: utf8
+# -*- coding: utf-8 -*-
 
+"""
+Usage:
+>>> import fastdfs_client
+# 参数 client_conf_file: 是fastdfs原始的客户端配置文件;
+# 也可以是简化版: 每行一个tracker server的配置:
+# tracker_server=192.168.183.129:22122
+>>> client = fastdfs_client.FastDFSClient("./tools/client.conf")
+
+# upload都支持meta的设置,默认不设置;
+# 注意: meta的设置在存储中会多一个文件
+# upload by buffer:
+>>> ok, filename = client.upload_by_buffer("hello,master", "txt")
+>>> print ok, filename
+True group1/M00/00/00/wKi3gVZjn8-ABy0-AAAAIZTVx1k695.txt
+>>> ok, slave_filename = client.upload_slave_by_buffer("hello,slave", "-small", filename)
+>>> print ok, slave_filename
+True group1/M00/00/00/wKi3gVZjn8-ABy0-AAAAIZTVx1k695-small.txt
+
+or upload by file:
+>>> ok, filename = client.upload_by_file("./tools/client.conf")
+>>> print ok, filename
+True group1/M00/00/00/wKi3gVZjoAWAf9ECAAABI9DxThI87.conf
+>>> ok, slave_filename = client.upload_slave_by_file("./tools/client.conf", "-big", filename)
+>>> print ok, slave_filename
+True group1/M00/00/00/wKi3gVZjoAWAf9ECAAABI9DxThI87-big.conf
+
+# at last:
+>>> client.destroy()
+
+
+"""
+import os
 import ctypes
-
-libfdfs = ctypes.cdll.LoadLibrary("libfdfsclient.so")
-
-IP_ADDRESS_SIZE = 16
+from fastdfs_c_define import *
 
 STORAGE_PROTO_CMD_UPLOAD_FILE = 11
 STORAGE_PROTO_CMD_DELETE_FILE = 12
@@ -16,125 +45,17 @@ STORAGE_PROTO_CMD_UPLOAD_SLAVE_FILE = 21
 FDFS_UPLOAD_BY_BUFF = 1
 FDFS_UPLOAD_BY_FILE = 2
 
-FDFS_MAX_META_NAME_LEN = 64+1
-FDFS_MAX_META_VALUE_LEN = 256+1
-
-class FDFSMetaData(ctypes.Structure):
-	_fields_ = [
-		("name", ctypes.c_char*FDFS_MAX_META_NAME_LEN),
-		("value", ctypes.c_char*FDFS_MAX_META_VALUE_LEN),
-	]
-
-class ConnectionInfo(ctypes.Structure):
-	_fields_ = [
-			("sock", ctypes.c_int),
-			("port", ctypes.c_int),
-			("ip_addr", ctypes.c_char*IP_ADDRESS_SIZE),
-		]
-	
-class TrackerServerGroup(ctypes.Structure):
-	_fields_ = [
-			("server_count", ctypes.c_int),
-			("server_index", ctypes.c_int),
-			("servers", ctypes.POINTER(ConnectionInfo)*1)
-		]
-
-libfdfs.log_init.argtypes = [ ]
-libfdfs.log_init.restype = ctypes.c_int
-
-libfdfs.fdfs_client_init_ex.argtypes = [
-		ctypes.POINTER(TrackerServerGroup), # TrackerServerGroup *pTrackerGroup
-		ctypes.c_char_p, # const char *conf_filename
-	]
-libfdfs.fdfs_client_init_ex.restype = ctypes.c_int
-
-libfdfs.tracker_get_connection_ex.argtypes = [
-		ctypes.POINTER(TrackerServerGroup), # TrackerServerGroup *pTrackerGroup
-	]
-libfdfs.tracker_get_connection_ex.restype = ctypes.POINTER(ConnectionInfo)
-
-libfdfs.fdfs_client_destroy_ex.argtypes = [
-		ctypes.POINTER(TrackerServerGroup), # TrackerServerGroup *pTrackerGroup
-	]
-libfdfs.fdfs_client_destroy_ex.restype = None
-
-libfdfs.tracker_connect_server_ex.argtypes = [
-		ctypes.POINTER(ConnectionInfo), # ConnectionInfo *pTrackerServer
-		ctypes.c_int, # const int connect_timeout
-		ctypes.POINTER(ctypes.c_int), # int *err_no
-	]
-libfdfs.tracker_connect_server_ex.restype = ctypes.POINTER(ConnectionInfo)
-
-libfdfs.storage_upload_by_filename1_ex.argtypes = [
-		ctypes.POINTER(ConnectionInfo), # ConnectionInfo *pTrackerServer
-		ctypes.POINTER(ConnectionInfo), # ConnectionInfo *pStorageServer
-		ctypes.c_int, # const int store_path_index
-		ctypes.c_char, # const char cmd
-		ctypes.c_char_p, # const char *local_filename
-		ctypes.c_char_p, # const char *file_ext_name
-		ctypes.POINTER(FDFSMetaData), # const FDFSMetaData *meta_list
-		ctypes.c_int, # const int meta_count
-		ctypes.c_char_p, # const char *group_name
-		ctypes.c_char_p, # char *file_id
-	]
-libfdfs.storage_upload_by_filename1_ex.restype = ctypes.c_int
-
-libfdfs.storage_do_upload_file1.argtypes = [
-		ctypes.POINTER(ConnectionInfo), # ConnectionInfo *pTrackerServer
-		ctypes.POINTER(ConnectionInfo), # ConnectionInfo *pStorageServer
-		ctypes.c_int, # const int store_path_index
-		ctypes.c_char, # const char cmd
-		ctypes.c_int, # const int upload_type
-		ctypes.c_char_p, # const char *file_buff
-		ctypes.POINTER(ctypes.c_void_p), # void *arg
-		ctypes.c_int64, # const int64_t file_size
-		ctypes.c_char_p, # const char *file_ext_name
-		ctypes.POINTER(FDFSMetaData), # const FDFSMetaData *meta_list
-		ctypes.c_int, # const int meta_count
-		ctypes.c_char_p, # const char *group_name
-		ctypes.c_char_p, # char *file_id
-	]
-libfdfs.storage_do_upload_file1.restype = ctypes.c_int
-
-libfdfs.storage_upload_slave_by_filename1.argtypes = [
-		ctypes.POINTER(ConnectionInfo), # ConnectionInfo *pTrackerServer
-		ctypes.POINTER(ConnectionInfo), # ConnectionInfo *pStorageServer
-		ctypes.c_char_p, # const char *local_filename
-		ctypes.c_char_p, # const char *master_file_id
-		ctypes.c_char_p, # const char *prefix_name
-		ctypes.c_char_p, # const char *file_ext_name
-		ctypes.POINTER(FDFSMetaData), # const FDFSMetaData *meta_list
-		ctypes.c_int, # const int meta_count
-		ctypes.c_char_p, # char *file_id
-	]
-libfdfs.storage_upload_slave_by_filename1.restype = ctypes.c_int
-
-libfdfs.storage_upload_slave_by_filebuff1.argtypes = [
-		ctypes.POINTER(ConnectionInfo), # ConnectionInfo *pTrackerServer
-		ctypes.POINTER(ConnectionInfo), # ConnectionInfo *pStorageServer
-		ctypes.c_char_p, # const char *file_buff
-		ctypes.c_int64, # const int64_t file_size
-		ctypes.c_char_p, # const char *master_file_id
-		ctypes.c_char_p, # const char *prefix_name
-		ctypes.c_char_p, # const char *file_ext_name
-		ctypes.POINTER(FDFSMetaData), # const FDFSMetaData *meta_list
-		ctypes.c_int, # const int meta_count
-		ctypes.c_char_p, # char *file_id
-	]
-libfdfs.storage_upload_slave_by_filebuff1.restype = ctypes.c_int
-
-
 class FastDFSClient(object):
 	def __init__(self, client_conf_file):
 		self._group = TrackerServerGroup()
 		self.p_group = ctypes.pointer(self._group)
-		libfdfs.log_init()
-		errno = libfdfs.fdfs_client_init_ex(self.p_group, client_conf_file) 
+		LIBFDFSCLIENT.log_init()
+		errno = LIBFDFSCLIENT.fdfs_client_init_ex(self.p_group, client_conf_file) 
 		if errno != 0:
 			raise Exception("init failed errno:%d"%errno)
 	
 	def _get_tracker(self):
-		p_tracker = libfdfs.tracker_get_connection_ex(self.p_group)
+		p_tracker = LIBFDFSCLIENT.tracker_get_connection_ex(self.p_group)
 		if bool(p_tracker):
 			# 如果tracker_get_connection_ex失败返回的是空指针
 			# 通过bool可以判断p_tracker是否空指针
@@ -157,7 +78,7 @@ class FastDFSClient(object):
 		return p_meta, meta_count
 		
 	def destroy(self):
-		libfdfs.fdfs_client_destroy_ex(self.p_group)
+		LIBFDFSCLIENT.fdfs_client_destroy_ex(self.p_group)
 		
 	def _get_file_ext_name(self, filename):
 		file_ext_name = ""
@@ -175,7 +96,7 @@ class FastDFSClient(object):
 		if upload_type == 'master_buffer':
 			content = argv['content']
 			file_ext_name = argv['file_ext_name']
-			errno = libfdfs.storage_do_upload_file1(
+			errno = LIBFDFSCLIENT.storage_do_upload_file1(
 					p_tracker, # ConnectionInfo *pTrackerServer
 					None, # ConnectionInfo *pStorageServer
 					0, # const int store_path_index
@@ -193,7 +114,7 @@ class FastDFSClient(object):
 		elif upload_type == 'master_file':
 			file_path = argv['file_path']
 			file_ext_name = self._get_file_ext_name(file_path)
-			errno = libfdfs.storage_upload_by_filename1_ex(
+			errno = LIBFDFSCLIENT.storage_upload_by_filename1_ex(
 					p_tracker,# ConnectionInfo *pTrackerServer
 					None,  # ConnectionInfo *pStorageServer
 					0, # const int store_path_index
@@ -210,7 +131,7 @@ class FastDFSClient(object):
 			prefix_name = argv['prefix_name']
 			master_file_name = argv['master_file_name']
 			file_ext_name = self._get_file_ext_name(master_file_name)
-			errno = libfdfs.storage_upload_slave_by_filebuff1(
+			errno = LIBFDFSCLIENT.storage_upload_slave_by_filebuff1(
 					p_tracker, # ConnectionInfo *pTrackerServer
 					None, # ConnectionInfo *pStorageServer
 					content, # const char *file_buff
@@ -227,7 +148,7 @@ class FastDFSClient(object):
 			prefix_name = argv['prefix_name']
 			master_file_name = argv['master_file_name']
 			file_ext_name = self._get_file_ext_name(master_file_name)
-			errno = libfdfs.storage_upload_slave_by_filename1(
+			errno = LIBFDFSCLIENT.storage_upload_slave_by_filename1(
 					p_tracker,# ConnectionInfo *pTrackerServer
 					None,  # ConnectionInfo *pStorageServer
 					file_path, # const char *local_filename
@@ -274,17 +195,17 @@ class FastDFSClient(object):
 
 	
 if __name__ == '__main__':
-	obj = FastDFSClient("./client.conf")
-	meta_dict = {"A":"xx", "B": "yy"}
-	ok, filename = obj.upload_by_buffer("aaaaaabbbb", "txt", meta_dict)
+	client = FastDFSClient("./tools/client.conf")
+	meta_dict = {"name":"tiffany", "location": "guangzhou"}
+	ok, filename = client.upload_by_buffer("hello,master", "txt", meta_dict)
 	print "upload_by_buffer:", ok, filename
-	ok, filename = obj.upload_slave_by_buffer("slave_abc", "-small", filename, meta_dict)
+	ok, filename = client.upload_slave_by_buffer("hello,slave", "-small", filename, meta_dict)
 	print "upload_slave_by_buffer:", ok, filename
-	
-	ok, filename = obj.upload_by_file("./client.conf", meta_dict)
+
+	ok, filename = client.upload_by_file("./tools/client.conf", meta_dict)
 	print "upload_by_file:", ok, filename
-	ok, filename = obj.upload_slave_by_file("./client.conf", "-big", filename, meta_dict)
+	ok, filename = client.upload_slave_by_file("./tools/client.conf", "-big", filename, meta_dict)
 	print "upload_slave_by_file:", ok, filename
-	
-	obj.destroy()
+
+	client.destroy()
 	
