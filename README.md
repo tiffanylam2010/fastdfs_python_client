@@ -1,27 +1,22 @@
 FastDFS Python Client (Ctypes Version)
 ======
-	用ctypes调用FastDFS原版client的c接口, 并把c接口依赖的流程组合起来.
-# FastDFS Python Client (Ctypes Version)
-
-用ctypes调用FastDFS原版client的c接口, 并把c接口依赖的流程组合起来.
+用ctypes调用[FastDFS](https://github.com/happyfish100/fastdfs.git)原版client的c接口, 并把c接口依赖的流程组合起来.
 
 ##依赖:
-
-* 依赖FastDFS原版的client编译出来的libfdfsclient.so<br>
+* 依赖FastDFS原版的client编译出来的libfdfsclient.so
 * 目前在debian7+python2.7下测试通过
 	
 ##功能:
-
 * 由于FastDFS一般是上传使用API,下载用http, 所以目前只提供了以下接口:
-        upload_by_buffer
-        upload_by_file
-        upload_slave_by_buffer
-        upload_slave_by_file
+		upload_by_buffer
+		upload_by_file
+		upload_slave_by_buffer
+		upload_slave_by_file
 
 * 如果需要,可以继续添加接口, 方法如下:
-        第一步: 在tools/c_function_define.txt中添加需要的接口中c中的定义
-        第二步: 运行tools/gendef.py, 这步是根据定义更新 fastdfs_c_define.py
-        第三步: 在fastdfs_client.py的FastDFSClient类中添加相关的函数调用
+		第一步: 在tools/c_function_define.txt中添加需要的接口中c中的定义
+		第二步: 运行tools/gendef.py, 这步是根据定义更新 fastdfs_c_define.py
+		第三步: 在fastdfs_client.py的FastDFSClient类中添加相关的函数调用
 	
 ## 用法:
 ```python
